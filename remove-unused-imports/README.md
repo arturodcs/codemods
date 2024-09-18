@@ -6,7 +6,7 @@ This codemod is designed to automatically remove unused import statements from y
 - [Features](#features)
 - [Examples](#examples)
 - [Test Cases](#test-cases)
-- Limitations
+- [Limitations](#limitations)
 
 
 ## Introduction
@@ -448,7 +448,7 @@ const data: utils.DataType = {};
 export default data;
 ```
 
-#### Case 18: Import Used in JSDoc Comment
+#### Case 18: Import Used in JSDoc Comment (Not considered, should be removed)
 Input:
 ```
 import { User } from './types';
@@ -464,8 +464,6 @@ export default printUser;
 ```
 Output:
 ```
-import { User } from './types';
-
 /**
  * @param {User} user
  */
@@ -475,47 +473,44 @@ function printUser(user) {
 
 export default printUser;
 ```
-Case 19: Import Used in String (Should Be Removed)
-Input (archivo19.js):
 
-javascript
-Copy code
+#### Case 19: Import Used in String (Not considered, should be removed)
+Input:
+```
 import { VERSION } from './constants';
 
 console.log('Current version is VERSION');
 
 export default {};
+```
 Output:
-
-javascript
-Copy code
+```
 console.log('Current version is VERSION');
 
 export default {};
-Case 20: JSON Module Import
-Input (archivo20.js):
+```
 
-javascript
-Copy code
+#### Case 20: JSON Module Import
+Input:
+```
 import config from './config.json';
 
 console.log(config.port);
 
 export default config;
+```
 Output:
-
-javascript
-Copy code
+```
 import config from './config.json';
 
 console.log(config.port);
 
 export default config;
-Case 21: Import Used in eval
-Input (archivo21.js):
+```
 
-javascript
-Copy code
+#### Case 21: Import Used in eval (Not considered, should be removed)
+Input:
+```
 import { secretKey } from './secrets';
 
 function getSecret() {
@@ -523,60 +518,55 @@ function getSecret() {
 }
 
 export default getSecret;
+```
 Output:
-
-javascript
-Copy code
-import { secretKey } from './secrets';
-
+```
 function getSecret() {
   return eval('secretKey');
 }
 
 export default getSecret;
-Case 22: Import Used in Template Literal
-Input (archivo22.js):
+```
 
-javascript
-Copy code
+#### Case 22: Import Used in Template Literal
+Input:
+```
 import { name } from './info';
 
 const message = `Hello, ${name}!`;
 
 export default message;
+```
 Output:
-
-javascript
-Copy code
+```
 import { name } from './info';
 
 const message = `Hello, ${name}!`;
 
 export default message;
-Case 23: Import Used in Destructuring
-Input (archivo23.js):
+```
 
-javascript
-Copy code
+#### Case 23: Import Used in Destructuring
+Input:
+```
 import { data } from './module';
 
 const { a, b } = data;
 
 export default a;
+```
 Output:
-
-javascript
-Copy code
+```
 import { data } from './module';
 
 const { a, b } = data;
 
 export default a;
-Case 24: Import Used in Callback Function
-Input (archivo24.js):
+```
 
-javascript
-Copy code
+#### Case 24: Import Used in Callback Function
+Input:
+```
 import { fetchData } from './api';
 
 setTimeout(() => {
@@ -584,10 +574,9 @@ setTimeout(() => {
 }, 1000);
 
 export default {};
+```
 Output:
-
-javascript
-Copy code
+```
 import { fetchData } from './api';
 
 setTimeout(() => {
@@ -595,11 +584,11 @@ setTimeout(() => {
 }, 1000);
 
 export default {};
-Case 25: Conditionally Used Import
-Input (archivo25.js):
+```
 
-javascript
-Copy code
+#### Case 25: Conditionally Used Import
+Input:
+```
 import { feature } from './features';
 
 if (Math.random() > 0.5) {
@@ -607,10 +596,9 @@ if (Math.random() > 0.5) {
 }
 
 export default {};
+```
 Output:
-
-javascript
-Copy code
+```
 import { feature } from './features';
 
 if (Math.random() > 0.5) {
@@ -618,11 +606,55 @@ if (Math.random() > 0.5) {
 }
 
 export default {};
+```
 
-Case 26: No he creado el archivo en el folder __testfixtures__ pero quiero hacer uno especifico para que ignore el default import de React.
+#### Case 26: Ignoring React Default Import
+Input:
+```
+import React from 'react';
 
-Limitations
-Dynamic Usages: The codemod relies on static analysis and may not detect usages in dynamic contexts like eval or computed property names.
-Comments and Strings: References to imports in comments or strings are not considered as usages.
-Tooling Compatibility: If you have custom tooling that relies on certain import statements being present (e.g., for code generation or documentation), verify the impact before applying the codemod.
-TypeScript Types: The codemod handles imports used as types in TypeScript, but ensure you test it with your specific TypeScript configurations.
+function App() {
+  return <div>Hello World</div>;
+}
+
+export default App;
+```
+Output:
+```
+import React from 'react';
+
+function App() {
+  return <div>Hello World</div>;
+}
+
+export default App;
+```
+
+#### Case 27: Keep First Line Comment
+Input:
+```
+// This is a comment
+import { helper } from './helpers';
+
+function doSomething() {
+  console.log('Doing something');
+}
+
+export default doSomething;
+```
+Output:
+```
+// This is a comment
+
+function doSomething() {
+  console.log('Doing something');
+}
+
+export default doSomething;
+```
+
+
+## Limitations
+- **Dynamic Usages**: The codemod relies on static analysis and may not detect usages in dynamic contexts like eval or computed property names.
+- **Comments and Strings**: References to imports in comments or strings are not considered as usages.
+- **Tooling Compatibility**: If you have custom tooling that relies on certain import statements being present (e.g., for code generation or documentation), verify the impact before applying the codemod.
