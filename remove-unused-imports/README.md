@@ -633,21 +633,24 @@ export default App;
 #### Case 27: Keep First Line Comment
 Input:
 ```
-// This is a comment
-import { helper } from './helpers';
+// This is one comment
+// This is another comment
+import { helper } from "./helpers";
 
+// There is a comment here
 function doSomething() {
-  console.log('Doing something');
+  console.log("Doing something");
 }
 
 export default doSomething;
 ```
 Output:
 ```
-// This is a comment
-
+// This is one comment
+// This is another comment
+// There is a comment here
 function doSomething() {
-  console.log('Doing something');
+  console.log("Doing something");
 }
 
 export default doSomething;

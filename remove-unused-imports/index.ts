@@ -19,6 +19,9 @@ export default function transformer(file: FileInfo, api: API, options) {
   const isTypeScriptFile =
     file.path.endsWith(".ts") || file.path.endsWith(".tsx");
 
+  const firstNode = root.find(j.Program).get("body", 0).node;
+  const firstNodeComments = firstNode.comments;
+
   const removeIfUnused = (
     importSpecifierPath: ASTPath<ImportSpecifier>,
     importDeclarationPath: ASTPath<ImportDeclaration>
@@ -26,7 +29,7 @@ export default function transformer(file: FileInfo, api: API, options) {
     if (!importSpecifierPath.value.local) return;
     const varName = importSpecifierPath.value.local.name;
 
-    // ignore some identifiers
+    // Ignorar algunos identificadores
     if (!shouldRemoveUnusedIdentifier(varName)) return;
 
     const isUsedInScopes = () => {
@@ -34,7 +37,7 @@ export default function transformer(file: FileInfo, api: API, options) {
         root
           .find(j.Identifier, { name: varName })
           .filter((path) => {
-            // ignore the import specifier itself
+            // Ignorar el propio importador
             if (
               path.parentPath &&
               path.parentPath.value === importSpecifierPath.value
@@ -100,6 +103,27 @@ export default function transformer(file: FileInfo, api: API, options) {
     );
   }
 
+  // this function is used to fix the comments deletion issue when the first node is changed
+  function fixFirstNodeCommentsDeletion() {
+    // if there are changes in the first node and the original first node had comments
+    // then we need to add the comments to the new first node
+    if (
+      firstNode !== newFirstNode &&
+      firstNodeComments &&
+      firstNodeComments.length > 0
+    ) {
+      if (newFirstNode.comments && newFirstNode.comments.length > 0) {
+        newFirstNode.comments = [
+          ...firstNodeComments,
+          ...newFirstNode.comments,
+        ];
+      } else {
+        // 
+        newFirstNode.comments = firstNodeComments;
+      }
+    }
+  }
+
   root
     .find(j.ImportDeclaration)
     .forEach((importDeclarationPath: ASTPath<ImportDeclaration>) => {
@@ -116,6 +140,11 @@ export default function transformer(file: FileInfo, api: API, options) {
         j(importDeclarationPath).remove();
       }
     });
+
+  const newFirstNodePath = root.find(j.Program).get("body", 0);
+  const newFirstNode = newFirstNodePath.node;
+
+  fixFirstNodeCommentsDeletion();
 
   return root.toSource();
 }

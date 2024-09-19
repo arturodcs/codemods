@@ -40,4 +40,3 @@ defineTest(__dirname, "index", null, "ignoring-react-default-import");
 defineTest(__dirname, "index", null, "keep-first-line-comment");
 
 
-// TODO: revisar lo de que se elimina el primer comentario
