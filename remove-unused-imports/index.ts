@@ -107,9 +107,15 @@ function fixFirstNodeCommentsDeletion(
   }
 }
 
+function handleReturn(root: Collection<any>, file: FileInfo, hasRemovedImports: boolean) {
+  return hasRemovedImports ? root.toSource() : file.source;
+}
+
 export default function transformer(file: FileInfo, api: API, options) {
   const j: JSCodeshift = api.jscodeshift;
   const root: Collection<any> = j(file.source);
+
+  let hasRemovedImports = false;
 
   const originalFirstNode = root.find(j.Program).get("body", 0).node;
 
@@ -126,6 +132,7 @@ export default function transformer(file: FileInfo, api: API, options) {
       )
     ) {
       j(importSpecifierPath).remove();
+      hasRemovedImports = true;
       return true;
     }
     return false;
@@ -155,10 +162,11 @@ export default function transformer(file: FileInfo, api: API, options) {
       // if there are no specifiers left, remove the whole import declaration
       if (importDeclaration.specifiers.length === 0) {
         j(importDeclarationPath).remove();
+        hasRemovedImports = true;
       }
     });
 
   fixFirstNodeCommentsDeletion(j, root, originalFirstNode);
 
-  return root.toSource();
+  return handleReturn(root, file, hasRemovedImports);
 }
