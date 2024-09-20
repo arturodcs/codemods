@@ -1,12 +1,38 @@
 import {
   API,
   ASTPath,
+  CallExpression,
   Collection,
   FileInfo,
   ImportDeclaration,
   ImportSpecifier,
   JSCodeshift,
+  TSTypeReference,
+  TSUnionType,
 } from "jscodeshift";
+ 
+function isUsedInTSTypeReference(
+  typeParameter: TSTypeReference,
+  varName: string
+): boolean {
+  // @ts-ignore
+  return (
+    typeParameter.typeName.type === "Identifier" &&
+    typeParameter.typeName.name === varName
+  );
+}
+
+function isUsedInTSUnionType(
+  typeParameter: TSUnionType,
+  varName: string
+): boolean {
+  return typeParameter.types.some((type) => {
+    if (type.type === "TSTypeReference") {
+      return isUsedInTSTypeReference(type, varName);
+    }
+    return false;
+  });
+}
 
 function isUsedAsType(
   j: JSCodeshift,
@@ -14,13 +40,44 @@ function isUsedAsType(
   file: FileInfo,
   varName: string
 ) {
+  // TODO: THIS DOESN'T WORK
+  // https://github.com/facebook/jscodeshift/issues/387
+  // https://github.com/facebook/jscodeshift/issues/389
+  // https://github.com/benjamn/ast-types/issues/343
+
   const isTypeScriptFile =
     file.path.endsWith(".ts") || file.path.endsWith(".tsx");
 
   if (!isTypeScriptFile) return false;
-  return (
+
+  let isUsed = false;
+
+  if (
     root.find(j.TSTypeReference, { typeName: { name: varName } }).size() > 0
+  ) {
+    return true;
+  }
+
+  const callExpressions = root.find(j.CallExpression);
+  isUsed = callExpressions.some(
+    (callExpressionPath: ASTPath<CallExpression>) => {
+      const callExpression = callExpressionPath.node;
+      if (!("typeParameters" in callExpression)) return false;
+
+      return (callExpression as any).typeParameters.params.some(
+        (typeParameter: TSTypeReference | TSUnionType) => {
+          if (typeParameter.type === "TSUnionType") {
+            return isUsedInTSUnionType(typeParameter, varName);
+          } else if (typeParameter.type === "TSTypeReference") {
+            return isUsedInTSTypeReference(typeParameter, varName);
+          }
+          return false;
+        }
+      );
+    }
   );
+
+  return isUsed;
 }
 
 function isUsedInJSX(j: JSCodeshift, root: Collection<any>, varName: string) {
@@ -107,7 +164,11 @@ function fixFirstNodeCommentsDeletion(
   }
 }
 
-function handleReturn(root: Collection<any>, file: FileInfo, hasRemovedImports: boolean) {
+function handleReturn(
+  root: Collection<any>,
+  file: FileInfo,
+  hasRemovedImports: boolean
+) {
   return hasRemovedImports ? root.toSource() : file.source;
 }
 
