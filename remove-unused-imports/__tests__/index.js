@@ -18,7 +18,7 @@ defineTest(__dirname, "index", null, "mixed-import-with-some-unused-specifiers")
 defineTest(__dirname, "index", null, "side-effect-import");
 defineTest(__dirname, "index", null, "import-used-in-jsx");
 defineTest(__dirname, "index", null, "import-mentioned-in-comments");
-defineTest(__dirname, "index", null, "import-used-as-type-in-typescript", tsOptions);
+defineTest(__dirname, "index", null, "type-import-used-in-type-annotations", tsOptions);
 defineTest(__dirname, "index", null, "import-used-in-generic-type", tsxOptions);
 defineTest(__dirname, "index", null, "unused-renamed-import");
 defineTest(__dirname, "index", null, "imports-with-name-conflicts");
@@ -38,5 +38,7 @@ defineTest(__dirname, "index", null, "import-used-in-callback-function");
 defineTest(__dirname, "index", null, "conditionally-used-import");
 defineTest(__dirname, "index", null, "ignoring-react-default-import");
 defineTest(__dirname, "index", null, "keep-first-line-comment");
-
+defineTest(__dirname, "index", null, "shebang-line-preservation");
+defineTest(__dirname, "index", null, "type-import-used-in-generic-type-parameters", tsOptions);
+defineTest(__dirname, "index", null, "multiple-type-imports-used-in-generic-type-parameters", tsOptions);
 

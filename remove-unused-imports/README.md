@@ -1,37 +1,42 @@
 # Codemod: Remove Unused Imports
+
 This codemod is designed to automatically remove unused import statements from your JavaScript and TypeScript codebase. It helps in keeping your code clean, reducing clutter, and potentially improving build times by eliminating unnecessary dependencies.
 
 ## Table of Contents
+
 - [Introduction](#introduction)
 - [Features](#features)
 - [Examples](#examples)
 - [Test Cases](#test-cases)
 - [Limitations](#limitations)
 
-
 ## Introduction
+
 In large codebases, it's common to accumulate import statements that are no longer used due to refactoring, feature removal, or code evolution. Manually identifying and removing these unused imports can be tedious and error-prone. This codemod automates the process, ensuring your code remains clean and maintainable.
 
 ## Features
+
 - Supports JavaScript and TypeScript: Works with both `.js`, `.jsx`, `.ts`, and `.tsx` files.
 - Handles Various Import Types:
-    - Default imports
-    - Named imports
-    - Namespace imports (`import * as`)
-    - Mixed imports (default and named)
-    - Side-effect imports (`import './styles.css';`)
+  - Default imports
+  - Named imports
+  - Namespace imports (`import * as`)
+  - Mixed imports (default and named)
+  - Side-effect imports (`import './styles.css';`)
 - Considers Usages in:
-    - Code execution paths
-    - JSX elements
-    - Type annotations (TypeScript)
-    - Re-exports
+  - Code execution paths
+  - JSX elements
+  - Type annotations (TypeScript)
+  - Re-exports
 - Ignores:
-    - Comments and strings (does not consider them as usage)
-    - Unused imports mentioned in comments
-    - Import statements without specifiers (assumed to have side effects)
+  - Comments and strings (does not consider them as usage)
+  - Unused imports mentioned in comments
+  - Import statements without specifiers (assumed to have side effects)
 
 ## Examples
+
 ### Before Transformation
+
 ```
 // Example: src/components/App.js
 import React from 'react';
@@ -55,6 +60,7 @@ export default App;
 ```
 
 ### After Transformation
+
 ```
 import React from 'react';
 import { useState } from 'react';
@@ -74,17 +80,22 @@ function App() {
 
 export default App;
 ```
+
 #### Explanation:
+
 - Removed `useEffect` from the import statement because it wasn't used.
 - Removed the namespace import `* as utils` because it wasn't used.
 - Kept `React` import.
 - Kept the side-effect import `import './styles.css';`.
 
 ## Test Cases
+
 The codemod has been tested extensively to ensure it handles a wide range of scenarios. Below are detailed test cases with input and expected output.
 
 #### Case 1: Unused Default Import
+
 Input:
+
 ```
 import config from "./config.json";
 
@@ -94,17 +105,21 @@ function App() {
 
 export default App;
 ```
+
 Output:
+
 ```
 function App() {
   return <div>Hello World</div>;
 }
 
 export default App;
-````
+```
 
 #### Case 2: Unused Named Import
+
 Input:
+
 ```
 import { useState, useEffect } from 'react';
 
@@ -114,7 +129,9 @@ function Component() {
 
 export default Component;
 ```
+
 Output:
+
 ```
 function Component() {
   console.log('Component mounted');
@@ -123,8 +140,10 @@ function Component() {
 export default Component;
 ```
 
-#### Case 3: Unused Namespace Import  
+#### Case 3: Unused Namespace Import
+
 Input:
+
 ```
 import * as utils from './utils';
 
@@ -132,7 +151,9 @@ const result = 42;
 
 export default result;
 ```
+
 Output:
+
 ```
 const result = 42;
 
@@ -140,7 +161,9 @@ export default result;
 ```
 
 #### Case 4: Mixed Import with Some Unused Specifiers
+
 Input:
+
 ```
 import React, { useState, useEffect } from 'react';
 
@@ -151,7 +174,9 @@ function App() {
 
 export default App;
 ```
+
 Output:
+
 ```
 import React, { useState } from 'react';
 
@@ -164,7 +189,9 @@ export default App;
 ```
 
 #### Case 5: Side-Effect Import (Should Not Be Removed)
+
 Input:
+
 ```
 import './styles.css';
 
@@ -174,7 +201,9 @@ function Component() {
 
 export default Component;
 ```
+
 Output:
+
 ```
 import './styles.css';
 
@@ -186,7 +215,9 @@ export default Component;
 ```
 
 #### Case 6: Import Used in JSX
+
 Input:
+
 ```
 import { Button } from 'components';
 
@@ -200,7 +231,9 @@ function App() {
 
 export default App;
 ```
+
 Output:
+
 ```
 import { Button } from 'components';
 
@@ -216,7 +249,9 @@ export default App;
 ```
 
 #### Case 7: Import Mentioned in Comments (Not considered, should be removed)
+
 Input:
+
 ```
 import { helper } from './helpers';
 
@@ -228,7 +263,9 @@ function doSomething() {
 
 export default doSomething;
 ```
+
 Output:
+
 ```
 // TODO: use helper function here
 
@@ -239,8 +276,9 @@ function doSomething() {
 export default doSomething;
 ```
 
-#### Case 8: Import Used as Type in TypeScript
+#### Case 8: Type Import Used in Type Annotations
 Input:
+
 ```
 import { User } from './types';
 
@@ -250,7 +288,9 @@ function getUser(id: number): User {
 
 export default getUser;
 ```
+
 Output:
+
 ```
 import { User } from './types';
 
@@ -262,7 +302,9 @@ export default getUser;
 ```
 
 #### Case 9: Import Used in Generic Type
-Input: 
+
+Input:
+
 ```
 import React, { Component } from 'react';
 
@@ -278,7 +320,9 @@ class MyComponent extends Component<Props> {
 
 export default MyComponent;
 ```
+
 Output:
+
 ```
 import React, { Component } from 'react';
 
@@ -296,7 +340,9 @@ export default MyComponent;
 ```
 
 #### Case 10: Unused Renamed Import
+
 Input:
+
 ```
 import { foo as bar } from './module';
 
@@ -306,7 +352,9 @@ function doSomething() {
 
 export default doSomething;
 ```
+
 Output:
+
 ```
 function doSomething() {
   console.log('Doing something');
@@ -316,7 +364,9 @@ export default doSomething;
 ```
 
 #### Case 11: Imports with Name Conflicts
+
 Input:
+
 ```
 import { duplicate } from './module1';
 import { duplicate as dup } from './module2';
@@ -327,7 +377,9 @@ function test() {
 
 export default test;
 ```
+
 Output:
+
 ```
 import { duplicate } from './module1';
 
@@ -339,13 +391,17 @@ export default test;
 ```
 
 #### Case 12: Re-exported Import
+
 Input:
+
 ```
 import { helper } from './helpers';
 
 export { helper };
 ```
+
 Output:
+
 ```
 import { helper } from './helpers';
 
@@ -353,14 +409,18 @@ export { helper };
 ```
 
 #### Case 13: Dynamic Import (Should Not Be Affected)
+
 Input:
+
 ```
 const moduleName = './module';
 import(moduleName).then((module) => {
   module.doSomething();
 });
 ```
+
 Output:
+
 ```
 const moduleName = './module';
 import(moduleName).then((module) => {
@@ -369,7 +429,9 @@ import(moduleName).then((module) => {
 ```
 
 #### Case 14: Import with Alias Used
+
 Input:
+
 ```
 import { originalName as aliasName } from './module';
 
@@ -379,7 +441,9 @@ function test() {
 
 export default test;
 ```
+
 Output:
+
 ```
 import { originalName as aliasName } from './module';
 
@@ -391,7 +455,9 @@ export default test;
 ```
 
 #### Case 15: Multiple Imports with Some Unused
+
 Input:
+
 ```
 import { a, b, c } from './module';
 
@@ -401,7 +467,9 @@ function test() {
 
 export default test;
 ```
+
 Output:
+
 ```
 import { a } from './module';
 
@@ -413,7 +481,9 @@ export default test;
 ```
 
 #### Case 16: Import Used in Method Chain
+
 Input:
+
 ```
 import _ from 'lodash';
 
@@ -421,7 +491,9 @@ const result = _.chain([1, 2, 3]).map(n => n * 2).value();
 
 export default result;
 ```
+
 Output:
+
 ```
 import _ from 'lodash';
 
@@ -431,7 +503,9 @@ export default result;
 ```
 
 #### Case 17: Import Used as Type Qualifier in TypeScript
+
 Input:
+
 ```
 import * as utils from './utils';
 
@@ -439,7 +513,9 @@ const data: utils.DataType = {};
 
 export default data;
 ```
+
 Output:
+
 ```
 import * as utils from './utils';
 
@@ -449,7 +525,9 @@ export default data;
 ```
 
 #### Case 18: Import Used in JSDoc Comment (Not considered, should be removed)
+
 Input:
+
 ```
 import { User } from './types';
 
@@ -462,7 +540,9 @@ function printUser(user) {
 
 export default printUser;
 ```
+
 Output:
+
 ```
 /**
  * @param {User} user
@@ -475,7 +555,9 @@ export default printUser;
 ```
 
 #### Case 19: Import Used in String (Not considered, should be removed)
+
 Input:
+
 ```
 import { VERSION } from './constants';
 
@@ -483,7 +565,9 @@ console.log('Current version is VERSION');
 
 export default {};
 ```
+
 Output:
+
 ```
 console.log('Current version is VERSION');
 
@@ -491,7 +575,9 @@ export default {};
 ```
 
 #### Case 20: JSON Module Import
+
 Input:
+
 ```
 import config from './config.json';
 
@@ -499,7 +585,9 @@ console.log(config.port);
 
 export default config;
 ```
+
 Output:
+
 ```
 import config from './config.json';
 
@@ -509,7 +597,9 @@ export default config;
 ```
 
 #### Case 21: Import Used in eval (Not considered, should be removed)
+
 Input:
+
 ```
 import { secretKey } from './secrets';
 
@@ -519,7 +609,9 @@ function getSecret() {
 
 export default getSecret;
 ```
+
 Output:
+
 ```
 function getSecret() {
   return eval('secretKey');
@@ -529,7 +621,9 @@ export default getSecret;
 ```
 
 #### Case 22: Import Used in Template Literal
+
 Input:
+
 ```
 import { name } from './info';
 
@@ -537,7 +631,9 @@ const message = `Hello, ${name}!`;
 
 export default message;
 ```
+
 Output:
+
 ```
 import { name } from './info';
 
@@ -547,7 +643,9 @@ export default message;
 ```
 
 #### Case 23: Import Used in Destructuring
+
 Input:
+
 ```
 import { data } from './module';
 
@@ -555,7 +653,9 @@ const { a, b } = data;
 
 export default a;
 ```
+
 Output:
+
 ```
 import { data } from './module';
 
@@ -565,7 +665,9 @@ export default a;
 ```
 
 #### Case 24: Import Used in Callback Function
+
 Input:
+
 ```
 import { fetchData } from './api';
 
@@ -575,7 +677,9 @@ setTimeout(() => {
 
 export default {};
 ```
+
 Output:
+
 ```
 import { fetchData } from './api';
 
@@ -587,7 +691,9 @@ export default {};
 ```
 
 #### Case 25: Conditionally Used Import
+
 Input:
+
 ```
 import { feature } from './features';
 
@@ -597,7 +703,9 @@ if (Math.random() > 0.5) {
 
 export default {};
 ```
+
 Output:
+
 ```
 import { feature } from './features';
 
@@ -609,7 +717,9 @@ export default {};
 ```
 
 #### Case 26: Ignoring React Default Import
+
 Input:
+
 ```
 import React from 'react';
 
@@ -619,7 +729,9 @@ function App() {
 
 export default App;
 ```
+
 Output:
+
 ```
 import React from 'react';
 
@@ -631,7 +743,9 @@ export default App;
 ```
 
 #### Case 27: Keep First Line Comment
+
 Input:
+
 ```
 // This is one comment
 // This is another comment
@@ -644,7 +758,9 @@ function doSomething() {
 
 export default doSomething;
 ```
+
 Output:
+
 ```
 // This is one comment
 // This is another comment
@@ -656,8 +772,69 @@ function doSomething() {
 export default doSomething;
 ```
 
+#### Case 28: Shebang Line Preservation
+
+Input:
+
+```
+#! /usr/bin/env node
+import { foo } from "./bar.js";
+import { baz } from "./qux.js";
+
+const logger = await foo();
+```
+
+Output:
+
+```
+#! /usr/bin/env node
+import { foo } from "./bar.js";
+
+const logger = await foo();
+```
+
+#### Case 29: Type Import Used in Generic Type Parameters
+
+Input:
+
+```
+// @ts-nocheck
+import { ContextType } from "../types";
+
+export const context = createContext<ContextType>({});
+```
+
+Output:
+
+```
+// @ts-nocheck
+import { ContextType } from "../types";
+
+export const context = createContext<ContextType>({});
+```
+
+#### Case 30: Multiple Type Imports Used in Generic Type Parameters
+
+Input:
+
+```
+// @ts-nocheck
+import { ContextType, OtherType } from "../types";
+
+export const context = createContext<ContextType | OtherType>({});
+```
+
+Output:
+
+```
+// @ts-nocheck
+import { ContextType, OtherType } from "../types";
+
+export const context = createContext<ContextType | OtherType>({});
+```
 
 ## Limitations
+
 - **Dynamic Usages**: The codemod relies on static analysis and may not detect usages in dynamic contexts like eval or computed property names.
 - **Comments and Strings**: References to imports in comments or strings are not considered as usages.
 - **Tooling Compatibility**: If you have custom tooling that relies on certain import statements being present (e.g., for code generation or documentation), verify the impact before applying the codemod.

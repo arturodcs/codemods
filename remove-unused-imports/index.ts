@@ -1,133 +1,22 @@
 import {
   API,
   ASTPath,
-  CallExpression,
   Collection,
   FileInfo,
   ImportDeclaration,
   ImportSpecifier,
   JSCodeshift,
-  TSTypeReference,
-  TSUnionType,
 } from "jscodeshift";
- 
-function isUsedInTSTypeReference(
-  typeParameter: TSTypeReference,
-  varName: string
-): boolean {
-  // @ts-ignore
-  return (
-    typeParameter.typeName.type === "Identifier" &&
-    typeParameter.typeName.name === varName
-  );
-}
-
-function isUsedInTSUnionType(
-  typeParameter: TSUnionType,
-  varName: string
-): boolean {
-  return typeParameter.types.some((type) => {
-    if (type.type === "TSTypeReference") {
-      return isUsedInTSTypeReference(type, varName);
-    }
-    return false;
-  });
-}
-
-function isUsedAsType(
-  j: JSCodeshift,
-  root: Collection<any>,
-  file: FileInfo,
-  varName: string
-) {
-  // TODO: THIS DOESN'T WORK
-  // https://github.com/facebook/jscodeshift/issues/387
-  // https://github.com/facebook/jscodeshift/issues/389
-  // https://github.com/benjamn/ast-types/issues/343
-
-  const isTypeScriptFile =
-    file.path.endsWith(".ts") || file.path.endsWith(".tsx");
-
-  if (!isTypeScriptFile) return false;
-
-  let isUsed = false;
-
-  if (
-    root.find(j.TSTypeReference, { typeName: { name: varName } }).size() > 0
-  ) {
-    return true;
-  }
-
-  const callExpressions = root.find(j.CallExpression);
-  isUsed = callExpressions.some(
-    (callExpressionPath: ASTPath<CallExpression>) => {
-      const callExpression = callExpressionPath.node;
-      if (!("typeParameters" in callExpression)) return false;
-
-      return (callExpression as any).typeParameters.params.some(
-        (typeParameter: TSTypeReference | TSUnionType) => {
-          if (typeParameter.type === "TSUnionType") {
-            return isUsedInTSUnionType(typeParameter, varName);
-          } else if (typeParameter.type === "TSTypeReference") {
-            return isUsedInTSTypeReference(typeParameter, varName);
-          }
-          return false;
-        }
-      );
-    }
-  );
-
-  return isUsed;
-}
-
-function isUsedInJSX(j: JSCodeshift, root: Collection<any>, varName: string) {
-  return root.find(j.JSXIdentifier, { name: varName }).size() > 0;
-}
+import {
+  getInterpreterDirectivePath,
+  removeInterpreterDirective,
+} from "./functions/interpreter-directive";
+import { getFirstASTNode, removeNode } from "./functions/jscodeshift";
+import { isUsedInJSX, isUsedInScopes, isUsedAsType } from "./functions/utils";
+import { fixFirstNodeCommentsDeletion } from "./functions/first-comment-deletion-bug";
 
 function shouldRemoveUnusedIdentifier(name: string) {
   return name !== "React";
-}
-
-function isUsedInScopes(
-  j: JSCodeshift,
-  root: Collection<any>,
-  importSpecifierPath: ASTPath<ImportSpecifier>,
-  varName: string
-) {
-  return (
-    root
-      .find(j.Identifier, { name: varName })
-      .filter((path) => {
-        // Ignorar el propio importador
-        if (
-          path.parentPath &&
-          path.parentPath.value === importSpecifierPath.value
-        ) {
-          return false;
-        }
-
-        // Excluir referencias en propiedades y claves de objetos
-        if (
-          path.name === "property" &&
-          (path.parentPath.value.type === "MemberExpression" ||
-            path.parentPath.value.type === "Property")
-        ) {
-          return false;
-        }
-
-        // Excluir referencias en declaraciones de importación
-        let currentPath = path;
-        while (currentPath) {
-          // @ts-ignore
-          if (currentPath.value.type === "ImportDeclaration") {
-            return false;
-          }
-          currentPath = currentPath.parentPath;
-        }
-        return true;
-      })
-      .size() > 0
-  );
 }
 
 function hasImportSpecifier(importDeclaration: ImportDeclaration): boolean {
@@ -136,51 +25,26 @@ function hasImportSpecifier(importDeclaration: ImportDeclaration): boolean {
   );
 }
 
-function fixFirstNodeCommentsDeletion(
-  j: JSCodeshift,
-  root: Collection<any>,
-  originalFirstNode: any
-) {
-  // this function is used to fix the comments deletion issue when the first node is changed
-  // if there are changes in the first node and the original first node had comments
-  // then we need to add the comments to the new first node
-  const originalFirstNodeComments = originalFirstNode.comments;
-  const newFirstNodePath = root.find(j.Program).get("body", 0);
-  const newFirstNode = newFirstNodePath.node;
-
-  if (
-    originalFirstNode !== newFirstNode &&
-    originalFirstNodeComments &&
-    originalFirstNodeComments.length > 0
-  ) {
-    if (newFirstNode.comments && newFirstNode.comments.length > 0) {
-      newFirstNode.comments = [
-        ...originalFirstNodeComments,
-        ...newFirstNode.comments,
-      ];
-    } else {
-      newFirstNode.comments = originalFirstNodeComments;
-    }
-  }
-}
-
-function handleReturn(
-  root: Collection<any>,
-  file: FileInfo,
-  hasRemovedImports: boolean
-) {
-  return hasRemovedImports ? root.toSource() : file.source;
-}
-
 export default function transformer(file: FileInfo, api: API, options) {
   const j: JSCodeshift = api.jscodeshift;
   const root: Collection<any> = j(file.source);
 
-  let hasRemovedImports = false;
+  let wasFileModified = false;
 
-  const originalFirstNode = root.find(j.Program).get("body", 0).node;
+  const originalFirstNode = getFirstASTNode(j, root);
 
-  const removeIfUnused = (importSpecifierPath: ASTPath<ImportSpecifier>) => {
+  // interpreter directive handling due a bug in jscodeshift
+  const interpreterDirectivePath = getInterpreterDirectivePath(j, root);
+  let interpreterDirectiveValue: string | null = null;
+  if (interpreterDirectivePath) {
+    interpreterDirectiveValue = removeInterpreterDirective(
+      j,
+      root,
+      interpreterDirectivePath
+    );
+  }
+
+  function removeIfUnused(importSpecifierPath: ASTPath<ImportSpecifier>) {
     if (!importSpecifierPath.value.local) return;
     const varName = importSpecifierPath.value.local.name;
 
@@ -193,21 +57,9 @@ export default function transformer(file: FileInfo, api: API, options) {
       )
     ) {
       j(importSpecifierPath).remove();
-      hasRemovedImports = true;
-      return true;
+      wasFileModified = true;
     }
-    return false;
-  };
-
-  const removeUnusedImportSpecifiers = (
-    importDeclarationPath: ASTPath<ImportDeclaration>
-  ) => {
-    const importSpecifiers = importDeclarationPath.get("specifiers");
-
-    importSpecifiers.each((importSpecifierPath: ASTPath<ImportSpecifier>) => {
-      removeIfUnused(importSpecifierPath);
-    });
-  };
+  }
 
   root
     .find(j.ImportDeclaration)
@@ -215,19 +67,34 @@ export default function transformer(file: FileInfo, api: API, options) {
       const importDeclaration = importDeclarationPath.node;
       if (!importDeclaration.specifiers) return;
 
-      // ignore import declarations without specifiers (e.g. `import 'styles.css';`)
+      // ignore import declarations without specifiers
+      // (e.g. `import 'styles.css';`)
       if (!hasImportSpecifier(importDeclaration)) return;
 
-      removeUnusedImportSpecifiers(importDeclarationPath);
+      const importSpecifiers = importDeclarationPath.get("specifiers");
+      importSpecifiers.each((importSpecifierPath: ASTPath<ImportSpecifier>) => {
+        removeIfUnused(importSpecifierPath);
+      });
 
       // if there are no specifiers left, remove the whole import declaration
       if (importDeclaration.specifiers.length === 0) {
         j(importDeclarationPath).remove();
-        hasRemovedImports = true;
+        wasFileModified = true;
       }
     });
 
   fixFirstNodeCommentsDeletion(j, root, originalFirstNode);
 
-  return handleReturn(root, file, hasRemovedImports);
+  if (wasFileModified) {
+    let source = root.toSource();
+
+    // add back the interpreter directive if it was removed
+    if (interpreterDirectiveValue) {
+      source = `#!${interpreterDirectiveValue}\n${source}`;
+    }
+
+    return source;
+  } else {
+    return file.source;
+  }
 }
